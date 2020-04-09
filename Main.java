@@ -16,7 +16,7 @@ public class Main {
         FallbackLoggerConfiguration.setDebug(true);
 
         // The token is the first argument of the program
-        String token = "NjM0MTM3MDc2MTE1MzA4NjE3.XaeIZA.d9NdwP11bR4UPrmn7XS8vgW5i3M";
+        String token = "TOKEN";
 
         // We login blocking, just because it is simpler and doesn't matter here
         DiscordApi api = new DiscordApiBuilder().setToken(token).login().join();
