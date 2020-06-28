@@ -48,8 +48,8 @@ async def ping(ctx):
 
 @bot.command()
 async def who(ctx):
-    message = "**Channel**: " + ctx.channel.name\
-              + "\n**Author**: " + ctx.author.name\
+    message = "**Channel**: " + ctx.channel.name \
+              + "\n**Author**: " + ctx.author.name \
               + "\n**Author Join Date**: " + ctx.author.joined_at.strftime("%d/%m/%Y")
     await ctx.send(message)
 
@@ -60,7 +60,11 @@ async def whom(ctx):
         member = ctx.author
     else:
         member = ctx.message.mentions[0]
-    embed = discord.Embed(title="Who this?", color=member.roles[-2].colour)
+    if member.roles[-1].colour.default():
+        display_colour = member.roles[-2].colour
+    else:
+        display_colour = member.roles[-1].colour
+    embed = discord.Embed(title="Who this?", color=display_colour)
     embed.set_thumbnail(url=member.avatar_url)
     embed.add_field(name="Name", value=member.name, inline=True)
     embed.add_field(name="Status", value=statuses[str(member.status)], inline=True)
@@ -79,11 +83,12 @@ async def whom(ctx):
                 join_order += people[x]
                 if not x == len(people) - 1 and not x == index + 2:
                     join_order += " > "
-        embed.add_field(name="Join Rank", value="#" + str(index+1), inline=True)
+        embed.add_field(name="Join Rank", value="#" + str(index + 1), inline=True)
         embed.add_field(name="Join Order", value=join_order, inline=False)
-    embed.add_field(name="Roles", value=', '.join(reversed(['`{}`'.format(role.name) for role in member.roles[1:-1]])),
+    embed.add_field(name="Roles", value=', '.join(reversed(['`{}`'.format(role.name) for role in member.roles
+                                                            if role.name != "@everyone"])),
                     inline=False)
     await ctx.send(embed=embed)
 
 
-bot.run(TOKEN)  # replace the word token with slavbots token
+bot.run(token)  # replace the word token with slavbots token
