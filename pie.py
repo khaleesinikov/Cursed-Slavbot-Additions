@@ -1,6 +1,5 @@
-import discord # imports main discord module
-from discord.ext import commands # imports the bot specific parts
-from datetime import datetime
+import discord  # imports main discord module
+from discord.ext import commands  # imports the bot specific parts
 
 print(discord.__version__)
 
@@ -28,6 +27,8 @@ async def on_command_error(context, exception):
 
 @bot.event  # this is a "decorator" (like from java) it means "this function is overriding one of the ones in bot.event"
 async def on_ready():  # this function runs when the bot has logged in
+    bot.load_extension("cogs.CogTest")
+    bot.load_extension("cogs.poll")
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
@@ -66,21 +67,23 @@ async def whom(ctx):
     if not member.bot:
         people = [member.name for member in sorted(ctx.guild.members, key=lambda z: z.joined_at) if not member.bot]
         join_order = ""
-        for x in range(people.index(member.name) - 2, people.index(member.name) + 3):
+        index = people.index(member.name)
+        for x in range(index - 2, index + 3):
             if x < 0 or x > len(people) - 1:
                 continue
             if people[x] == member.name:
                 join_order += "**{}**".format(member.name)
-                if not x == len(people) - 1 and not x == people.index(member.name) + 2:
+                if not x == len(people) - 1 and not x == index + 2:
                     join_order += " > "
             else:
                 join_order += people[x]
-                if not x == len(people) - 1 and not x == people.index(member.name) + 2:
+                if not x == len(people) - 1 and not x == index + 2:
                     join_order += " > "
-        embed.add_field(name="Join Rank", value="#" + str(people.index(member.name)+1), inline=True)
+        embed.add_field(name="Join Rank", value="#" + str(index+1), inline=True)
         embed.add_field(name="Join Order", value=join_order, inline=False)
     embed.add_field(name="Roles", value=', '.join(reversed(['`{}`'.format(role.name) for role in member.roles[1:-1]])),
                     inline=False)
     await ctx.send(embed=embed)
+
 
 bot.run(TOKEN)  # replace the word token with slavbots token
