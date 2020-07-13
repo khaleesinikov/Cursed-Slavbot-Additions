@@ -8,6 +8,7 @@ discord.ext.commands extension module. There are a number of utility commands be
 showcased here.'''  # triple ' means multi line string
 
 bot = commands.Bot(command_prefix='s!', description=description)  # initialises bot object with a prefix
+startup_extensions = ["cogs.CogTest", "cogs.poll", "cogs.gamble"]
 
 statuses = {
     "online": "🟢 ONLINE",
@@ -27,12 +28,16 @@ async def on_command_error(context, exception):
 
 @bot.event  # this is a "decorator" (like from java) it means "this function is overriding one of the ones in bot.event"
 async def on_ready():  # this function runs when the bot has logged in
-    bot.load_extension("cogs.CogTest")
-    bot.load_extension("cogs.poll")
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
     print('------')
+    for extension in startup_extensions:
+        try:
+            bot.load_extension(extension)
+        except Exception as e:
+            exc = '{}: {}'.format(type(e).__name__, e)
+            print('Failed to load extension {}\n  {}'.format(extension, exc))
 
 
 @bot.command()  # this says "this function is a command, when you do the prefix + the function name run this function
@@ -91,4 +96,19 @@ async def whom(ctx):
     await ctx.send(embed=embed)
 
 
-bot.run(token)  # replace the word token with slavbots token
+@bot.command()
+async def reload(ctx, cog):
+    try:
+        bot.unload_extension(cog)
+    except Exception as e:
+        exc = '{}: {}'.format(type(e).__name__, e)
+        print('Failed to unload {}\n  {}'.format(cog, exc))
+    try:
+        bot.load_extension(cog)
+        await ctx.send(cog + " loaded")
+    except Exception as e:
+        exc = '{}: {}'.format(type(e).__name__, e)
+        print('Failed to load {}\n  {}'.format(cog, exc))
+
+
+bot.run(TOKEN)  # replace the word token with slavbots token
