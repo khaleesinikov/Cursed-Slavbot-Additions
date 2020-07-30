@@ -1,10 +1,8 @@
+from datetime import datetime
 from math import ceil
-
 import discord
 import pydealer
-import sqlite3
 from discord.ext import commands
-from datetime import datetime
 
 
 def unparser(money):
@@ -72,9 +70,8 @@ class Gamble(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.database = sqlite3.connect("gamble.db")
+        self.database = bot.database
         self.cursor = self.database.cursor()
-        print("Connected to SQLite")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS players (" +
                             "user TEXT UNIQUE," +
                             "balance INTEGER," +
@@ -294,7 +291,7 @@ class Gamble(commands.Cog):
             await ctx.send("Finish your game first smh")
             return
         self.cursor.execute("UPDATE players SET balance=?, last_daily=? WHERE user=?",
-                            (temp[1]+50, today_date, ctx.author.id))
+                            (temp[1] + 50, today_date, ctx.author.id))
         await ctx.send("You have been granted 50 SlavStocks(tm), don't spend them all at once!")
 
     @blackjack.command(name='rank')
@@ -314,6 +311,100 @@ class Gamble(commands.Cog):
         embed.add_field(name='\u200B', value='\u200B', inline=False)
         embed.add_field(name='Total players', value=str(len(temp)))
         await ctx.send(embed=embed)
+
+    @commands.command(name='balance')
+    async def balance(self, ctx):
+        self.cursor.execute("SELECT * FROM players WHERE user=?", (str(ctx.author.id),))
+        temp = self.cursor.fetchone()
+        if temp is None:
+            await ctx.send("404: balance not found")
+            return
+        await ctx.send(f"You have {temp[1]} SlavStocks(tm) available.")
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        gamer = message.author.id
+        if gamer not in dealt_hands:
+            return
+        if message.content.lower() == "hit":
+            hand = dealt_hands[gamer]
+            deck = player_decks[gamer]
+            bet = player_bets[gamer]
+            hand += deck.deal(1)
+            hand.sort()
+            value = calculate_value(hand)
+            await message.channel.send(make_display(message.author.name, hand, bet, value))
+            self.cursor.execute("SELECT * FROM players WHERE user=?", (str(gamer),))
+            entry = self.cursor.fetchone()
+            if value == 21:
+                await message.channel.send(
+                    f"You hit 21! You have won {bet * 2} SlavStocks(tm), and now have {entry[1] + bet} SlavStocks(tm).")
+                self.cursor.execute("UPDATE players SET in_game='no', balance=?, net=? WHERE user=?",
+                                    (entry[1] + bet, entry[2] + bet, str(gamer)))
+                self.cursor.execute("SELECT * FROM blackjack WHERE user=?", (str(gamer),))
+                temp = self.cursor.fetchone()
+                self.cursor.execute("UPDATE blackjack SET games=?, gains=? WHERE user=?",
+                                    (temp[1] + 1, temp[2] + bet, str(gamer)))
+                self.database.commit()
+                del player_bets[gamer]
+                del player_decks[gamer]
+                del dealt_hands[gamer]
+                return
+            elif value > 21:
+                await message.channel.send(
+                    f"Uh oh you got above 21 and lost {bet} SlavStocks(tm) :( You now have {entry[1] - bet} "
+                    f"SlavStocks(tm).")
+                self.cursor.execute("UPDATE players SET in_game='no', balance=?, net=? WHERE user=?",
+                                    (entry[1] - bet, entry[2] - bet, str(gamer)))
+                self.cursor.execute("SELECT * FROM blackjack WHERE user=?", (str(gamer),))
+                temp = self.cursor.fetchone()
+                self.cursor.execute("UPDATE blackjack SET games=?, gains=? WHERE user=?",
+                                    (temp[1] + 1, temp[2] - bet, str(gamer)))
+                self.database.commit()
+                del player_bets[gamer]
+                del player_decks[gamer]
+                del dealt_hands[gamer]
+                return
+            else:
+                await message.channel.send(f"Your score is {value}. You may now stand or hit.")
+                dealt_hands[gamer] = hand
+                player_decks[gamer] = deck
+        elif message.content.lower() == "stand":
+            hand = dealt_hands[gamer]
+            value = calculate_value(hand)
+            bet = player_bets[gamer]
+            self.cursor.execute("SELECT * FROM players WHERE user=?", (str(gamer),))
+            entry = self.cursor.fetchone()
+            if value == 20:
+                winnings = ceil(bet * 0.25)
+                await message.channel.send(
+                    f"You finished with a score of 20. You won {bet + winnings} SlavStocks(tm) and now have "
+                    f"{entry[1] + winnings} SlavStocks(tm).")
+            elif value == 19:
+                winnings = ceil(bet * 0.05)
+                await message.channel.send(
+                    f"You finished with a score of 19. You won {bet + winnings} SlavStocks(tm) and now have "
+                    f"{entry[1] + winnings} SlavStocks(tm).")
+            elif value > 15:
+                winnings = 0
+                await message.channel.send(
+                    f"You finished with a score of {value}. You got your {bet} SlavStocks(tm) back and now have "
+                    f"{entry[1]} SlavStocks(tm).")
+            else:
+                winnings = 0 - bet
+                await message.channel.send(
+                    f"You finished with a score of {value}. You lost all {bet} SlavStocks(tm) :( You now have "
+                    f"{entry[1] - bet} SlavStocks(tm).")
+            self.cursor.execute("UPDATE players SET in_game='no', balance=?, net=? WHERE user=?",
+                                (entry[1] + winnings, entry[2] + winnings, str(gamer)))
+            self.cursor.execute("SELECT * FROM blackjack WHERE user=?", (str(gamer),))
+            temp = self.cursor.fetchone()
+            self.cursor.execute("UPDATE blackjack SET games=?, gains=? WHERE user=?",
+                                (temp[1] + 1, temp[2] + winnings, str(gamer)))
+            self.database.commit()
+            del player_bets[gamer]
+            del player_decks[gamer]
+            del dealt_hands[gamer]
 
 
 def setup(bot):

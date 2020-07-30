@@ -1,3 +1,4 @@
+import sqlite3
 import discord  # imports main discord module
 from discord.ext import commands  # imports the bot specific parts
 
@@ -8,7 +9,10 @@ discord.ext.commands extension module. There are a number of utility commands be
 showcased here.'''  # triple ' means multi line string
 
 bot = commands.Bot(command_prefix='s!', description=description)  # initialises bot object with a prefix
-startup_extensions = ["cogs.CogTest", "cogs.poll", "cogs.gamble"]
+startup_extensions = ["cogs.CogTest", "cogs.poll", "cogs.gamble", "cogs.hangman"]
+
+bot.database = sqlite3.connect("gamble.db")
+print("Connected to SQLite")
 
 statuses = {
     "online": "🟢 ONLINE",
@@ -111,4 +115,4 @@ async def reload(ctx, cog):
         print('Failed to load {}\n  {}'.format(cog, exc))
 
 
-bot.run(TOKEN)  # replace the word token with slavbots token
+bot.run("NjM0MTM3MDc2MTE1MzA4NjE3.Xo9-5w.amviYhGegsjbo5xZxzLRDs-mBDk")  # replace the word token with slavbots token
